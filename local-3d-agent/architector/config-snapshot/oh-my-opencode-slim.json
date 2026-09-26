@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
+  "preset": "ollama-local",
+  "presets": {
+    "ollama-local": {
+      "orchestrator": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      },
+      "explorer": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      },
+      "librarian": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      },
+      "oracle": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      },
+      "designer": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      },
+      "fixer": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      },
+      "council": {
+        "model": "ollama/qwen3-coder-next:q4_K_M"
+      }
+    }
+  }
+}

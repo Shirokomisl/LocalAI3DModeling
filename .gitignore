@@ -1,0 +1,80 @@
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+.venv-*/
+venv/
+env/
+.conda/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# JavaScript dependencies
+node_modules/
+
+# Build artifacts and compiled extensions
+build/
+dist/
+*.egg-info/
+temp.win-amd64-*/
+
+# Downloaded model weights and serialized checkpoints
+*.pth
+*.pt
+*.pt2
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+*.ggml
+*.bin
+*.engine
+*.plan
+*.tflite
+*.pkl
+*.pickle
+
+# Generated 3D assets
+*.glb
+*.gltf
+*.stl
+*.blend
+*.blend1
+*.blend2
+*.fbx
+*.3mf
+
+# Local generation output, model caches, and datasets
+output/
+outputs/
+interactive_output/
+.cache/
+mini_trainset/
+
+# Local input image and downloaded Python runtime
+/local-3d-agent/input/*
+!/local-3d-agent/input/.gitkeep
+/Python310Dev/
+
+# Logs, temporary files, and OS metadata
+*.log
+*.tmp
+*.bak
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
