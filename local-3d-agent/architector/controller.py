@@ -22,14 +22,33 @@ def extract_json(text):
         except Exception:
             pass
     texts = []
+
+    def collect_text(value):
+        if isinstance(value, dict):
+            if isinstance(value.get("text"), str):
+                texts.append(value["text"])
+            if isinstance(value.get("content"), str):
+                texts.append(value["content"])
+            for key in ("part", "message", "data", "result", "content"):
+                nested = value.get(key)
+                if isinstance(nested, (dict, list)):
+                    collect_text(nested)
+        elif isinstance(value, list):
+            for item in value:
+                collect_text(item)
+
     for obj in candidates:
         if isinstance(obj, dict):
+            if "action" in obj:
+                return obj
             if isinstance(obj.get("text"), str):
                 texts.append(obj["text"])
             if isinstance(obj.get("message"), dict):
                 content = obj["message"].get("content")
                 if isinstance(content, str):
                     texts.append(content)
+            collect_text(obj)
+    texts = list(dict.fromkeys(texts))
     texts.append(text)
     for block in reversed(texts):
         block = block.strip()
@@ -45,23 +64,69 @@ def extract_json(text):
                 return json.loads(m.group(0))
             except Exception:
                 pass
-    raise RuntimeError("Controller did not return a valid JSON decision.")
+    output_tail = text[-3000:].encode("ascii", "backslashreplace").decode("ascii")
+    raise RuntimeError(
+        "Controller did not return a valid JSON decision. "
+        f"OpenCode output tail:\n{output_tail}"
+    )
 
 def run_controller(state_path, stage):
     state = Path(state_path)
+    state_data = json.loads(state.read_text(encoding="utf-8-sig"))
+
+    def brief_list(value):
+        if not isinstance(value, list):
+            return []
+        return [str(item)[:240] for item in value[:8]]
+
+    candidates = []
+    for candidate in state_data.get("candidates", [])[:8]:
+        if not isinstance(candidate, dict):
+            continue
+        qa = candidate.get("qa")
+        if not isinstance(qa, dict):
+            qa = {}
+        repair_plan = qa.get("repair_plan")
+        if not isinstance(repair_plan, dict):
+            repair_plan = {}
+        candidates.append({
+            "name": candidate.get("name"),
+            "kind": candidate.get("kind"),
+            "score": candidate.get("score", qa.get("overall")),
+            "critical_defects": brief_list(qa.get("critical_defects")),
+            "repair_instructions": brief_list(repair_plan.get("instructions")),
+            "stop_reason": repair_plan.get("stop_reason", ""),
+        })
+    vision = state_data.get("vision")
+    if not isinstance(vision, dict):
+        vision = {}
+    geometry = vision.get("geometry_requirements")
+    if not isinstance(geometry, dict):
+        geometry = {}
+    state_summary = {
+        "stage": stage,
+        "best_model": state_data.get("best_model"),
+        "best_score": state_data.get("best_score"),
+        "minimum_qa_score": state_data.get("minimum_qa_score", 4.0),
+        "candidates": candidates,
+        "subject": vision.get("subject", ""),
+        "topology_risks": brief_list(vision.get("topology_risks")),
+        "volumetric_parts": brief_list(geometry.get("volumetric_parts")),
+        "separate_parts": brief_list(geometry.get("separate_parts")),
+        "backside_required": brief_list(geometry.get("backside_required")),
+    }
     prompt = (
-        "You are controlling the local image-to-3D pipeline.\n"
-        f"Stage: {stage}\n"
-        "Read the attached project state JSON. Use only facts present there.\n"
-        "Use existing Architector specialist roles when they materially reduce uncertainty.\n"
-        "Return ONLY the required decision JSON from your system prompt.\n"
-        "Do not edit files. The caller will execute your decision.\n"
+        "Use this state summary to choose one allowed next action. Facts: "
+        f"{json.dumps(state_summary, ensure_ascii=True, separators=(',', ':'))}. "
+        f"A best score below {state_summary['minimum_qa_score']} is not acceptable; "
+        "do not choose stop when QA reports critical defects and actionable repair instructions. "
+        "Return one JSON object matching the full required schema only."
     )
     env = os.environ.copy()
     env["OPENCODE_CONFIG"] = str(CONFIG)
     env["OPENCODE_CONFIG_DIR"] = str(CONFIG_DIR)
     cmd = [OPEN, "run", "--agent", "3d-orchestrator", "--format", "json",
-           "--auto", prompt, "--file", str(state)]
+           "--auto", prompt]
     proc = subprocess.run(cmd, cwd=str(ROOT), env=env, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           timeout=3600)
@@ -80,4 +145,4 @@ if __name__ == "__main__":
     result = run_controller(sys.argv[1], sys.argv[2])
     out = Path(sys.argv[3]) if len(sys.argv) > 3 else Path(sys.argv[1]).with_name("controller_decision.json")
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    print(json.dumps(result, ensure_ascii=True, indent=2))

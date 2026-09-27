@@ -245,6 +245,7 @@ if($decision){
   if($s -le 0){$s=[Math]::Max(110,$Steps+35)}
   $r=[int]$decision.resolution
   if($r -le 0){$r=576}
+  if($r -gt 576){Write-Warning "Architector resolution $r exceeds the 12 GB preset; clamping to 576.";$r=576}
   $g=[double]$decision.guidance_scale
   if($g -le 0){$g=5.8}
   $seed2=$Seed+[int]$decision.seed_offset+9000+$MaxControllerIterations
